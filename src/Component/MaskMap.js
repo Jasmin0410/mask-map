@@ -4,13 +4,17 @@ import { updateLocation } from '../redux/action';
 import * as L from 'leaflet';
 import 'leaflet.markercluster'
 
+//import svg icon
+import marker from '../style/img/marker.svg'
+import phone from '../style/img/phone.svg'
+
 import { GetMaskData, blueIcon } from './common/GetData';
 
 class MaskMap extends Component {
   constructor(props) {
     super(props)
     this.state = {
-
+      storedata: []
     }
     this.GetUserGeo = this.GetUserGeo.bind(this);
   }
@@ -46,6 +50,7 @@ class MaskMap extends Component {
     }).addTo(this.map);
 
     const importData = () => GetMaskData().then(data => {
+      this.setState({ storedata: data });
       const markers = L.markerClusterGroup().addTo(this.map);
 
       for (let i = 0; i < (data.length - 1); i++) {
@@ -60,14 +65,18 @@ class MaskMap extends Component {
           .bindPopup(
             `<div>
               <div class="store-name">${data[i].properties.name}</div>
-              <div class="store-info">${data[i].properties.address}</div>
-              <div class="store-info">${data[i].properties.phone}</div>
+              <div class="store-info">
+                <img class="icon" src=${marker} />${data[i].properties.address}
+              </div>
+              <div class="store-info">
+                <img class="icon" src=${phone} />${data[i].properties.phone}
+              </div>
               <div class="mask-status">
                 <div class='popup mask-item ${maskStatus(adult)}'>大人: ${adult}</div>
                 <div class='popup mask-item ${maskStatus(child)}'>小孩: ${child} </div>
               </div>
             </div>`,
-            { closeButton: false, maxWidth: 340 }
+            { closeButton: false }
           ));
       }
       this.map.addLayer(markers);
@@ -83,6 +92,36 @@ class MaskMap extends Component {
   componentDidUpdate(prevProps) {
     if (prevProps.location !== this.props.location) {
       this.map.panTo([this.props.location[0], this.props.location[1]]);
+
+      const centerStore = this.state.storedata.filter(store => {
+        return store.geometry.coordinates[1] === this.props.location[0] && store.geometry.coordinates[0] === this.props.location[1]
+      })
+
+      if (centerStore[0]) {
+        const store = centerStore[0];
+        let adult = store.properties.mask_adult;
+        let child = store.properties.mask_child;
+
+        const maskStatus = (item) => { return item === 0 ? "soldout" : "stock" };
+
+        L.marker([this.props.location[0], this.props.location[1]], { icon: blueIcon })
+          .bindPopup(
+            `<div>
+              <div class="store-name">${store.properties.name}</div>
+              <div class="store-info">
+                <img class="icon" src=${marker} />${store.properties.address}
+              </div>
+              <div class="store-info">
+                <img class="icon"src=${phone} />${store.properties.phone}
+              </div>
+              <div class="mask-status">
+                <div class='popup mask-item ${maskStatus(adult)}'>大人: ${adult}</div>
+                <div class='popup mask-item ${maskStatus(child)}'>小孩: ${child}</div>
+              </div>
+            </div>`,
+            { closeButton: false }
+          ).addTo(this.map).openPopup();
+      }
     }
   }
 
