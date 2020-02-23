@@ -114,6 +114,7 @@ html,body,#root{
  &:hover{
    background-color: #e8edff;
  }
+
 }
 .store-name{
    font-size: 18px;
@@ -123,5 +124,19 @@ html,body,#root{
  .store-info{
   font-size: 16px;
   margin-bottom: 8px;
+
+  a{
+    text-decoration: none;
+    color: #383a40;
+  }
+  a:hover{
+    color: #668AFE;
+  }
  }
 
+
+ @media screen and (max-width:768px) { 
+  #map{
+    display: none;
+  }
+}

@@ -29,7 +29,8 @@ class StoreItem extends Component {
       >
         <div className="store-name">{storeInfo.name}</div>
         <div className="store-info">
-          <img className="icon" src={marker} />{storeInfo.address}
+          <img className="icon" src={marker} />
+          <a href={`https://www.google.com.tw/maps/search/${storeInfo.address}`} target="_blank">{storeInfo.address}</a>
         </div>
         <div className="store-info">
           <img className="icon" src={phone} />{storeInfo.phone}
