@@ -40,17 +40,21 @@ class MaskMap extends Component {
   }
 
   componentDidMount() {
+    // 引入地圖
     this.map = L.map('map', {
       center: this.props.location,
       zoom: 16
     });
 
+    // 引入圖資
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.map);
 
+    // 藉由 GetMaskData 引入資料
     const importData = () => GetMaskData().then(data => {
       this.setState({ storedata: data });
+      // 引入 markerClusterGroup
       const markers = L.markerClusterGroup().addTo(this.map);
 
       for (let i = 0; i < (data.length - 1); i++) {
@@ -59,8 +63,10 @@ class MaskMap extends Component {
         let adult = data[i].properties.mask_adult;
         let child = data[i].properties.mask_child;
 
+        // 判斷口罩是否有庫存
         const maskStatus = (item) => { return item === 0 ? "soldout" : "stock" };
 
+        // 新贈 markers
         markers.addLayer(L.marker([lat, lon], { icon: blueIcon })
           .bindPopup(
             `<div>
@@ -85,16 +91,16 @@ class MaskMap extends Component {
     importData();
     this.getdata = setInterval(importData, 60000);
 
-    // this.GetUserGeo();
-
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.location !== this.props.location) {
-      this.map.panTo([this.props.location[0], this.props.location[1]]);
+    const location = this.props.location;
+
+    if (prevProps.location !== location) {
+      this.map.panTo([location[0], location[1]]);
 
       const centerStore = this.state.storedata.filter(store => {
-        return store.geometry.coordinates[1] === this.props.location[0] && store.geometry.coordinates[0] === this.props.location[1]
+        return store.geometry.coordinates[1] === location[0] && store.geometry.coordinates[0] === location[1]
       })
 
       if (centerStore[0]) {
@@ -104,23 +110,24 @@ class MaskMap extends Component {
 
         const maskStatus = (item) => { return item === 0 ? "soldout" : "stock" };
 
-        L.marker([this.props.location[0], this.props.location[1]], { icon: blueIcon })
-          .bindPopup(
-            `<div>
-              <div class="store-name">${store.properties.name}</div>
-              <div class="store-info">
-                <img class="icon" src=${marker} />${store.properties.address}
-              </div>
-              <div class="store-info">
-                <img class="icon"src=${phone} />${store.properties.phone}
-              </div>
-              <div class="mask-status">
-                <div class='popup mask-item ${maskStatus(adult)}'>大人: ${adult}</div>
-                <div class='popup mask-item ${maskStatus(child)}'>小孩: ${child}</div>
-              </div>
-            </div>`,
-            { closeButton: false }
-          ).addTo(this.map).openPopup();
+        this.map.setView([location[0], location[1]], 18);
+        L.popup()
+          .setLatLng([location[0], location[1]])
+          .setContent(`<div>
+                <div class="store-name">${store.properties.name}</div>
+                <div class="store-info">
+                  <img class="icon" src=${marker} />${store.properties.address}
+                </div>
+                <div class="store-info">
+                  <img class="icon"src=${phone} />${store.properties.phone}
+                </div>
+                <div class="mask-status">
+                  <div class='popup mask-item ${maskStatus(adult)}'>大人: ${adult}</div>
+                  <div class='popup mask-item ${maskStatus(child)}'>小孩: ${child}</div>
+                </div>
+              </div>`)
+          .openOn(this.map)
+
       }
     }
   }
