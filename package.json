@@ -9,7 +9,7 @@
     "css-loader": "^3.4.2",
     "leaflet": "^1.6.0",
     "leaflet.markercluster": "^1.4.1",
-    "node-sass": "^4.13.1",
+    "node-sass": "^7.0.0",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-icons": "^3.9.0",
