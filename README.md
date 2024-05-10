@@ -5,11 +5,13 @@
 ![image](https://github.com/Jasmin0410/mask-map/blob/master/mask-map.PNG)
 
 ## Demo
-網址 : <https://jasmin0410.github.io/mask-map/>
-
+連結 : <https://jasmin0410.github.io/mask-map/>
 
 ## 使用
 * React.js
 * Redux
 * Leaflet.js + OpenStreetMap
+
+## 筆記
+連結：https://medium.com/jass-note/前端筆記-口罩地圖製作紀錄-321b16b36131
 
