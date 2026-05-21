@@ -1,101 +1,106 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux'
-import { updateLocation } from '../redux/action';
+import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { updateLocation } from "../redux/action";
+import StoreList from "./navbar/StoreList";
+import { GetMaskData } from "./common/GetData";
+import CityCountyData from "./common/CityCountyData.json";
 
-import StoreList from './navbar/StoreList'
-import { GetMaskData } from './common/GetData';
-import CityCountyData from './common/CityCountyData.json'
+export default function NavBar() {
+  const dispatch = useDispatch();
+  const [data, setData] = useState([]);
+  const [cityName, setCityName] = useState("新北市");
+  const [areaName, setAreaName] = useState("新店區");
 
-class NavBar extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      data: [],
-      cityName: '新北市',
-      areaName: '新店區'
-    }
-  }
-
-  componentDidMount() {
-    const importData = () => GetMaskData()
-      .then(data => {
-        this.setState({ data: data })
-      })
-
+  useEffect(() => {
+    const importData = () => GetMaskData().then(setData);
     importData();
-    this.getdata = setInterval(importData, 600000);
-  }
+    const timer = setInterval(importData, 600000);
+    return () => clearInterval(timer);
+  }, []);
 
-  componentWillUnmount() {
-    clearInterval(this.getdata);
-  }
+  const cityOptions = CityCountyData.map((city) => (
+    <option key={city.CityEngName} value={city.CityName}>
+      {city.CityName}
+    </option>
+  ));
 
-  render() {
-    const citySelect = CityCountyData
-      .map(city => <option key={city.CityEngName} value={city.CityName}>{city.CityName}</option>);
+  const areaOptions = CityCountyData.find(
+    (city) => city.CityName === cityName,
+  )?.AreaList.map((area) => (
+    <option key={area.AreaEngName} value={area.AreaName}>
+      {area.AreaName}
+    </option>
+  ));
 
-    const areaSelect = () => {
-      const city = CityCountyData.filter(city => city.CityName === this.state.cityName);
-      return city[0].AreaList
-        .map(area => <option key={area.AreaEngName} value={area.AreaName}>{area.AreaName}</option>);
-    }
-
-    const stockStore = this.state.data.filter(store => {
-      const storeInfo = store.properties;
-      return storeInfo.address.includes(this.state.cityName + this.state.areaName) &&
-        (storeInfo.mask_adult !== 0 || storeInfo.mask_child !== 0);
-    })
-
-    const storeList = this.state.data.filter(store => {
-      const storeInfo = store.properties;
-      return storeInfo.address.includes(this.state.cityName + this.state.areaName)
-    })
-
-    const getCenter = () => {
-      if (stockStore.length === 0) { return }
-      let lat = stockStore[0].geometry.coordinates[1];
-      let lon = stockStore[0].geometry.coordinates[0];
-      return [lat, lon]
-    }
-
+  const stockStores = data.filter((store) => {
+    const info = store.properties;
     return (
-      <div className="navbar">
-        <div className="city-search">
-          <div className="city-select">
-            <select
-              className="select-input"
-              value={this.state.cityName}
-              onChange={(e) => this.setState({ cityName: e.target.value, areaName: '' })}
-            >
-              {citySelect}
-            </select>
-            <select
-              className="select-input"
-              value={this.state.areaName}
-              onChange={(e) => {
-                this.setState({ areaName: e.target.value })
-                this.props.updateLocation(getCenter())
-              }}
-            >
-              {areaSelect()}
-            </select>
-          </div>
+      info.address.includes(cityName + areaName) &&
+      (info.mask_adult !== 0 || info.mask_child !== 0)
+    );
+  });
 
-          <div className="city-total">
-            能取得口罩的藥局有：<span>{stockStore.length}</span>家
-        </div>
+  const storeList = data.filter((store) =>
+    store.properties.address.includes(cityName + areaName),
+  );
+
+  const panToFirstStock = (city, area) => {
+    const firstStock = data.find((store) => {
+      const info = store.properties;
+      return (
+        info.address.includes(city + area) &&
+        (info.mask_adult !== 0 || info.mask_child !== 0)
+      );
+    });
+    if (firstStock) {
+      const [lon, lat] = firstStock.geometry.coordinates;
+      dispatch(updateLocation([lat, lon]));
+    }
+  };
+
+  const handleAreaChange = (e) => {
+    const newArea = e.target.value;
+    setAreaName(newArea);
+    panToFirstStock(cityName, newArea);
+  };
+
+  const handleCityChange = (e) => {
+    const newCity = e.target.value;
+    const firstArea =
+      CityCountyData.find((city) => city.CityName === newCity)?.AreaList[0]
+        ?.AreaName || "";
+    setCityName(newCity);
+    setAreaName(firstArea);
+    panToFirstStock(newCity, firstArea);
+  };
+
+
+  return (
+    <div className="navbar">
+      <div className="city-search">
+        <div className="city-select">
+          <select
+            className="select-input"
+            value={cityName}
+            onChange={handleCityChange}
+          >
+            {cityOptions}
+          </select>
+          <select
+            className="select-input"
+            value={areaName}
+            onChange={handleAreaChange}
+          >
+            {areaOptions}
+          </select>
         </div>
 
-        <StoreList stores={storeList} />
+        <div className="city-total">
+          能取得口罩的藥局有：<span>{stockStores.length}</span>家
+        </div>
       </div>
-    )
-  }
+
+      <StoreList stores={storeList} />
+    </div>
+  );
 }
-
-
-
-const mapDispatchToProps = dispatch => ({
-  updateLocation: location => dispatch(updateLocation(location))
-})
-
-export default connect(null, mapDispatchToProps)(NavBar);

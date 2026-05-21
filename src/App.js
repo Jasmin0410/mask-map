@@ -1,9 +1,8 @@
-import React from 'react';
-import './style/style.scss';
-import './style/reset.css';
-import MaskMap from './Component/MaskMap';
-import NavBar from './Component/NavBar';
-
+import React from "react";
+import "./style/style.scss";
+import "./style/reset.css";
+import MaskMap from "./Component/MaskMap";
+import NavBar from "./Component/NavBar";
 
 function App() {
   return (
@@ -13,6 +12,5 @@ function App() {
     </div>
   );
 }
-
 
 export default App;
