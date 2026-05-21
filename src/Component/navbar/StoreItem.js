@@ -1,52 +1,45 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux'
-import { updateLocation } from '../../redux/action';
+import React from "react";
+import { useDispatch } from "react-redux";
+import { updateLocation } from "../../redux/action";
+import marker from "../../style/img/marker.svg";
+import phone from "../../style/img/phone.svg";
 
-//import svg icon
-import marker from '../../style/img/marker.svg'
-import phone from '../../style/img/phone.svg'
+function StoreItem({ store }) {
+  const dispatch = useDispatch();
+  const info = store.properties;
+  const [lon, lat] = store.geometry.coordinates;
+  const maskStatus = (n) => (n === 0 ? "soldout" : "stock");
 
-class StoreItem extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-
-    }
-  }
-
-  render() {
-    const storeInfo = this.props.store.properties;
-    const storeLocation = this.props.store.geometry.coordinates;
-    const adult = storeInfo.mask_adult;
-    const child = storeInfo.mask_child;
-
-    const maskStatus = (item) => { return item === 0 ? "soldout" : "stock" };
-
-    return (
-      <div
-        className="store-item"
-        onClick={() => this.props.updateLocation([storeLocation[1], storeLocation[0]])}
-      >
-        <div className="store-name">{storeInfo.name}</div>
-        <div className="store-info">
-          <img className="icon" src={marker} />
-          <a href={`https://www.google.com.tw/maps/search/${storeInfo.address}`} target="_blank">{storeInfo.address}</a>
+  return (
+    <div
+      className="store-item"
+      onClick={() => dispatch(updateLocation([lat, lon]))}
+    >
+      <div className="store-name">{info.name}</div>
+      <div className="store-info">
+        <img className="icon" src={marker} alt="" />
+        <a
+          href={`https://www.google.com.tw/maps/search/${info.address}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {info.address}
+        </a>
+      </div>
+      <div className="store-info">
+        <img className="icon" src={phone} alt="" />
+        {info.phone}
+      </div>
+      <div className="mask-status">
+        <div className={`mask-item adult ${maskStatus(info.mask_adult)}`}>
+          大人: {info.mask_adult}
         </div>
-        <div className="store-info">
-          <img className="icon" src={phone} />{storeInfo.phone}
-        </div>
-        <div className="mask-status">
-          <div className={`mask-item adult ${maskStatus(adult)}`}>大人: {adult}</div>
-          <div className={`mask-item child ${maskStatus(child)}`}>小孩: {child} </div>
+        <div className={`mask-item child ${maskStatus(info.mask_child)}`}>
+          小孩: {info.mask_child}
         </div>
       </div>
-    )
-  }
+    </div>
+  );
 }
 
-
-const mapDispatchToProps = dispatch => ({
-  updateLocation: location => dispatch(updateLocation(location))
-})
-
-export default connect(null, mapDispatchToProps)(StoreItem);
+export default StoreItem;

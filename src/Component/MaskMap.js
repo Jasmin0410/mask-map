@@ -1,154 +1,89 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux'
-import { updateLocation } from '../redux/action';
-import * as L from 'leaflet';
-import 'leaflet.markercluster'
+import React, { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
+import * as L from "leaflet";
+import "leaflet.markercluster";
+import marker from "../style/img/marker.svg";
+import phone from "../style/img/phone.svg";
+import { GetMaskData, blueIcon } from "./common/GetData";
 
-//import svg icon
-import marker from '../style/img/marker.svg'
-import phone from '../style/img/phone.svg'
+const maskStatus = (n) => (n === 0 ? "soldout" : "stock");
 
-import { GetMaskData, blueIcon } from './common/GetData';
+const storePopupHTML = (props) =>
+  `<div>
+    <div class="store-name">${props.name}</div>
+    <div class="store-info">
+      <img class="icon" src=${marker} />${props.address}
+    </div>
+    <div class="store-info">
+      <img class="icon" src=${phone} />${props.phone}
+    </div>
+    <div class="mask-status">
+      <div class='popup mask-item ${maskStatus(props.mask_adult)}'>大人: ${props.mask_adult}</div>
+      <div class='popup mask-item ${maskStatus(props.mask_child)}'>小孩: ${props.mask_child}</div>
+    </div>
+  </div>`;
 
-class MaskMap extends Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-      storedata: []
-    }
-    this.GetUserGeo = this.GetUserGeo.bind(this);
-  }
+function MaskMap() {
+  const location = useSelector((state) => state);
+  const mapRef = useRef(null);
+  const storedataRef = useRef([]);
+  const initialLocation = useRef(location);
 
-  GetUserGeo() {
-    const that = this;
-    function success(position) {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
+  useEffect(() => {
+    const map = L.map("map", { center: initialLocation.current, zoom: 16 });
+    mapRef.current = map;
 
-      that.props.updateLocation([latitude, longitude])
-    }
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
 
-    function error() {
-      alert('Unable to retrieve your location');
-    }
-
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-    } else {
-      navigator.geolocation.getCurrentPosition(success, error);
-    }
-  }
-
-  componentDidMount() {
-    // 引入地圖
-    this.map = L.map('map', {
-      center: this.props.location,
-      zoom: 16
-    });
-
-    // 引入圖資
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(this.map);
-
-    // 藉由 GetMaskData 引入資料
-    const importData = () => GetMaskData().then(data => {
-      this.setState({ storedata: data });
-      // 引入 markerClusterGroup
-      const markers = L.markerClusterGroup().addTo(this.map);
-
-      for (let i = 0; i < (data.length - 1); i++) {
-        let lat = data[i].geometry.coordinates[1];
-        let lon = data[i].geometry.coordinates[0];
-        let adult = data[i].properties.mask_adult;
-        let child = data[i].properties.mask_child;
-
-        // 判斷口罩是否有庫存
-        const maskStatus = (item) => { return item === 0 ? "soldout" : "stock" };
-
-        // 新贈 markers
-        markers.addLayer(L.marker([lat, lon], { icon: blueIcon })
-          .bindPopup(
-            `<div>
-              <div class="store-name">${data[i].properties.name}</div>
-              <div class="store-info">
-                <img class="icon" src=${marker} />${data[i].properties.address}
-              </div>
-              <div class="store-info">
-                <img class="icon" src=${phone} />${data[i].properties.phone}
-              </div>
-              <div class="mask-status">
-                <div class='popup mask-item ${maskStatus(adult)}'>大人: ${adult}</div>
-                <div class='popup mask-item ${maskStatus(child)}'>小孩: ${child} </div>
-              </div>
-            </div>`,
-            { closeButton: false }
-          ));
-      }
-      this.map.addLayer(markers);
-    });
+    const importData = () =>
+      GetMaskData().then((data) => {
+        storedataRef.current = data;
+        const markers = L.markerClusterGroup().addTo(map);
+        for (let i = 0; i < data.length - 1; i++) {
+          const [lon, lat] = data[i].geometry.coordinates;
+          markers.addLayer(
+            L.marker([lat, lon], { icon: blueIcon }).bindPopup(
+              storePopupHTML(data[i].properties),
+              { closeButton: false },
+            ),
+          );
+        }
+        map.addLayer(markers);
+      });
 
     importData();
-    this.getdata = setInterval(importData, 60000);
+    const timer = setInterval(importData, 60000);
+    return () => {
+      clearInterval(timer);
+      map.remove();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  }
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
-  componentDidUpdate(prevProps) {
-    const location = this.props.location;
+    map.panTo(location);
 
-    if (prevProps.location !== location) {
-      this.map.panTo([location[0], location[1]]);
+    const centerStore = storedataRef.current.find(
+      (store) =>
+        store.geometry.coordinates[1] === location[0] &&
+        store.geometry.coordinates[0] === location[1],
+    );
 
-      const centerStore = this.state.storedata.filter(store => {
-        return store.geometry.coordinates[1] === location[0] && store.geometry.coordinates[0] === location[1]
-      })
-
-      if (centerStore[0]) {
-        const store = centerStore[0];
-        let adult = store.properties.mask_adult;
-        let child = store.properties.mask_child;
-
-        const maskStatus = (item) => { return item === 0 ? "soldout" : "stock" };
-
-        this.map.setView([location[0], location[1]], 18);
-        L.popup()
-          .setLatLng([location[0], location[1]])
-          .setContent(`<div>
-                <div class="store-name">${store.properties.name}</div>
-                <div class="store-info">
-                  <img class="icon" src=${marker} />${store.properties.address}
-                </div>
-                <div class="store-info">
-                  <img class="icon"src=${phone} />${store.properties.phone}
-                </div>
-                <div class="mask-status">
-                  <div class='popup mask-item ${maskStatus(adult)}'>大人: ${adult}</div>
-                  <div class='popup mask-item ${maskStatus(child)}'>小孩: ${child}</div>
-                </div>
-              </div>`)
-          .openOn(this.map)
-
-      }
+    if (centerStore) {
+      map.setView(location, 18);
+      L.popup()
+        .setLatLng(location)
+        .setContent(storePopupHTML(centerStore.properties))
+        .openOn(map);
     }
-  }
+  }, [location]);
 
-  componentWillUnmount() {
-    clearInterval(this.getdata);
-  }
-
-  render() {
-    return (
-      <div id="map"></div>
-    )
-  }
+  return <div id="map"></div>;
 }
 
-
-const mapStateToProps = location => ({ location })
-
-const mapDispatchToProps = dispatch => ({
-  updateLocation: location => dispatch(updateLocation(location))
-})
-
-
-export default connect(mapStateToProps, mapDispatchToProps)(MaskMap);
+export default MaskMap;
